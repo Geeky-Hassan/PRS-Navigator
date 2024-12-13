@@ -363,11 +363,11 @@ class PRSChatbot:
         # Sidebar for document embedding management
         st.sidebar.header("Document Embedding Management")
         
-        # Create Embeddings Button
-        if st.sidebar.button("Generate Embeddings"):
-            with st.spinner("Creating vector embeddings..."):
-                if self.create_vector_embedding():
-                    st.sidebar.success("Embeddings Generated Successfully!")
+        # # Create Embeddings Button
+        # if st.sidebar.button("Generate Embeddings"):
+        #     with st.spinner("Creating vector embeddings..."):
+        #         if self.create_vector_embedding():
+        #             st.sidebar.success("Embeddings Generated Successfully!")
         
         # Load Embeddings Button
         if st.sidebar.button("Load Existing Embeddings"):
