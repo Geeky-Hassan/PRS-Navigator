@@ -3,6 +3,15 @@ import time
 import streamlit as st
 from dotenv import load_dotenv
 
+from PIL import Image
+# Configure page first, before any other imports
+st.set_page_config(
+    page_title="UMT PRS Navigator",
+    page_icon="🎓",
+    layout="wide"
+)
+
+# Now proceed with other imports
 import warnings
 
 # Langchain and Vector Store Imports
@@ -44,11 +53,16 @@ class PRSChatbot:
         os.makedirs(self.vectors_dir, exist_ok=True)
         
         self._setup_environment()
+
+        self.display_logo_and_title()
         
         self._initialize_session_state()
         
         # Set up LLM and Embedding models
         self._setup_models()
+        
+        # Automatically load embeddings on startup
+        self.load_vector_embedding()
     
     def _setup_environment(self):
         """
@@ -56,6 +70,35 @@ class PRSChatbot:
         """
         # Set Google API Key
         os.environ["GOOGLE_API_KEY"] = os.getenv("GOOGLE_API_KEY", "")
+
+    def display_logo_and_title(self):
+        """
+        Display UMT logo and PRS bot title at the top of the page
+        """
+        # Assuming you have a UMT logo file in the same directory
+        logo_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "umt_logo.png")
+        
+        if os.path.exists(logo_path):
+            # Create a column layout to place logo and title side by side
+            col1, col2 = st.columns([1, 2])
+            
+            with col1:
+                logo = Image.open(logo_path)
+                # Resize logo to fit nicely
+                st.image(logo, width = 200)
+            
+            with col2:
+                # Large, bold title with PRS bot name
+                st.markdown("""
+                # UMT PRS Navigator
+                **Participant Relations Section Intelligent Assistant**
+                """)
+        else:
+            # Fallback title if logo is not found
+            st.markdown("""
+            # 🎓 UMT PRS Navigator
+            **Participant Relations Section Intelligent Assistant**
+            """)
     
     def _initialize_session_state(self):
         """
@@ -76,7 +119,6 @@ class PRSChatbot:
                 return_messages=True
             )
 
-
     def _setup_models(self):
         """
         Set up Language Model and Embedding models with optimized parameters
@@ -96,90 +138,40 @@ class PRSChatbot:
             task_type="retrieval_query"
         )
     
-    def create_vector_embedding(self, data_directory="./data"):
-        """
-        Create advanced vector embeddings from PDF documents with local storage
-        
-        :param data_directory: Directory containing PDF files
-        """
-        try:
-            # Enhanced document loading
-            docs = []
-            pdf_files = [f for f in os.listdir(data_directory) if f.endswith('.pdf')]
-            
-            if not pdf_files:
-                st.error("No PDF files found in the data directory!")
-                return False
-            
-            for pdf_file in pdf_files:
-                file_path = os.path.join(data_directory, pdf_file)
-                loader = PDFPlumberLoader(file_path)
-                file_docs = loader.load()
-                
-                # Enhance each document with filename metadata
-                for doc in file_docs:
-                    doc.metadata['source'] = pdf_file
-                
-                docs.extend(file_docs)
-            
-            # Advanced text splitting
-            text_splitter = RecursiveCharacterTextSplitter(
-                chunk_size=1000,  # Optimal chunk size
-                chunk_overlap=200,  # Improved context preservation
-                length_function=len
-            )
-            final_documents = text_splitter.split_documents(docs)
-            
-            # Create vector store with enhanced metadata
-            vector_store = FAISS.from_documents(
-                final_documents, 
-                self.embeddings
-            )
-            
-            # Save vector store locally
-            vector_store.save_local(self.vectors_dir)
-            
-            # Update session state
-            st.session_state.vectors = vector_store
-            
-            st.success(f"Vector Store created with {len(final_documents)} document chunks")
-            return True
-        
-        except Exception as e:
-            st.error(f"Error creating vector embeddings: {e}")
-            return False
-    
     def load_vector_embedding(self):
-        """
-        Load existing vector embeddings from local storage
-        
-        :return: bool indicating successful loading
-        """
-        try:
-            # Check if local vector store exists
-            index_files = [f for f in os.listdir(self.vectors_dir) if f.startswith('index')]
+            """
+            Load existing vector embeddings from local storage with temporary success message
+            """
+            try:
+                # Check if local vector store exists
+                index_files = [f for f in os.listdir(self.vectors_dir) if f.startswith('index')]
+                
+                if not index_files:
+                    st.error("No existing vector embeddings found. Please ensure vector files are in the correct directory.")
+                    return False
+                
+                # Load the local vector store
+                vector_store = FAISS.load_local(
+                    self.vectors_dir, 
+                    self.embeddings,
+                    allow_dangerous_deserialization=True
+                )
+                
+                # Update session state
+                st.session_state.vectors = vector_store
+                
+                # Use a temporary success message that fades away
+                success_placeholder = st.empty()
+                success_placeholder.success("Vector embeddings loaded successfully!")
+                time.sleep(3)  # Show for 3 seconds
+                success_placeholder.empty()  # Clear the message
+                
+                return True
             
-            if not index_files:
-                st.warning("No existing vector embeddings found. Please generate them first.")
+            except Exception as e:
+                st.error(f"Error loading vector embeddings: {e}")
                 return False
-            
-            # Load the local vector store
-            vector_store = FAISS.load_local(
-                self.vectors_dir, 
-                self.embeddings,
-                allow_dangerous_deserialization=True
-            )
-            
-            # Update session state
-            st.session_state.vectors = vector_store
-            
-            st.success("Vector embeddings loaded successfully!")
-            return True
-        
-        except Exception as e:
-            st.error(f"Error loading vector embeddings: {e}")
-            return False
-    
+
     def create_rag_prompt(self):
         """
         Create a comprehensive prompt template for detailed responses.
@@ -260,7 +252,7 @@ class PRSChatbot:
         :return: Detailed response dictionary
         """
         if st.session_state.vectors is None:
-            st.warning("Please create or load document embeddings first!")
+            st.warning("Please load document embeddings first!")
             return None
         
         try:
@@ -350,47 +342,9 @@ class PRSChatbot:
         """
         Streamlit application main runner
         """
-        # Page configuration
-        st.set_page_config(
-            page_title="UMT PRS Navigator",
-            page_icon="🎓",
-            layout="wide"
-        )
-        
-        # Title and Introduction
-        st.title("🎓 UMT PRS Navigator")
-        st.markdown("""
-        Welcome! I provide precise information from UMT PRS Handbooks. 
-        Use the sidebar to manage document embeddings.
-        """)
-        
-        # Sidebar for document embedding management
-        st.sidebar.header("Document Embedding Management")
-        
-        # Create Embeddings Button
-        # if st.sidebar.button("Generate Embeddings"):
-        #     with st.spinner("Creating vector embeddings..."):
-        #         if self.create_vector_embedding():
-        #             st.sidebar.success("Embeddings Generated Successfully!")
-        
-        # Load Embeddings Button
-        if st.sidebar.button("Load Existing Embeddings"):
-            with st.spinner("Loading vector embeddings..."):
-                if self.load_vector_embedding():
-                    st.sidebar.success("Embeddings Loaded Successfully!")
-        
-        # Initialize user name in session state if not exists
-        if "user_name" not in st.session_state:
-            st.session_state.user_name = None
-        
-        # Prompt for user name if not set
-        if not st.session_state.user_name:
-            st.session_state.user_name = st.text_input("Please enter your name:")
-            if st.session_state.user_name:
-                st.success(f"Welcome, {st.session_state.user_name}!")
         
         # Chat Interface
-        st.header(f"Ask Your PRS Questions, {st.session_state.user_name or 'Student'}")
+        st.header("Ask Your Question")
         
         # Display chat history
         for message in st.session_state.messages:
@@ -398,7 +352,7 @@ class PRSChatbot:
                 st.markdown(message["content"])
         
         # User input
-        user_prompt = st.chat_input(f"What would you like to know about UMT PRS services, {st.session_state.user_name or 'Student'}?")
+        user_prompt = st.chat_input("What would you like to know about UMT PRS services?")
         
         if user_prompt:
             # Add user message to chat history
@@ -415,22 +369,15 @@ class PRSChatbot:
             response = self.query_documents(user_prompt)
             
             if response:
-                # Personalize the response if user name is known
-                if st.session_state.user_name:
-                    # response_with_name = f"Hello {st.session_state.user_name}{response['answer']}"
-                    response_with_name = response['answer']
-                else:
-                    response_with_name = response['answer']
-                
                 # Add assistant response to chat history
                 st.session_state.messages.append({
                     "role": "assistant", 
-                    "content": response_with_name
+                    "content": response['answer']
                 })
                 
                 # Display AI response
                 with st.chat_message("assistant"):
-                    st.markdown(response_with_name)
+                    st.markdown(response['answer'])
                 
                 # Response time and sources
                 col1, col2 = st.columns([3, 1])
