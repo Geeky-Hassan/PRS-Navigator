@@ -188,13 +188,15 @@ class PRSChatbot:
         """
         config = self.config_data
         return ChatPromptTemplate.from_template(f"""
-        Role: Detailed PRS Information Assistant for UMT
+        PRS Stands for Participant Relations Section. 
+        Role: Detailed Participant Relations Section (PRS) Information Assistant for UMT
 
         Document Context Information:
         - Document Sources:
             1. PRS FAQs from Official Website
             2. Undergraduate Studies Handbook
             3. Graduate Studies (MS/PhD) Handbook
+            4. UMT_Schools_Institutes_Offices_Centers_Names and Full Forms
 
         Important Notes:
         - Policies may have similar names but different internal instructions.
@@ -202,10 +204,10 @@ class PRSChatbot:
         - Distinguish between Undergraduate (BS) and Graduate (MS/PhD) policies.
 
         Strict Guidelines:
-        - You must not give any answer outside of the vector database context.
+        - You must not give any answer outside of the vector database context. Always Follow this guideline.
         - If the question is outside the scope, respond:
         "I am PRS chatbot helper, I can't answer outside of my scope. Please contact PRS for further details."
-        - Your only motive is to assist with PRS-related data.
+        - Your only motive is to assist with PRS-related data. 
 
         Language Handling Instructions:
         - If user communicates in Roman Urdu, respond in Roman Urdu.
@@ -224,6 +226,7 @@ class PRSChatbot:
         - Use ONLY information from the provided documents.
         - Include specific page and document references.
         - Be concise yet comprehensive.
+        - User can ask about any school, center or department of UMT, saying in Abbreviation. You must find the relevant full form from vector DB. 4th source file has all the relevent full forms.
         - Clearly indicate which document type (UG/Grad) the information is from.
 
         Context Documentation:
@@ -239,6 +242,7 @@ class PRSChatbot:
         - Cite specific document sources with exact document name.
         - Include page numbers when possible.
         - If information varies between UG/Grad, explain the differences.
+        - You must give accurate email address or links when needed as per the document.
         - If information is unavailable, clearly state so.
         - Suggest contacting PRS for further details.
 
@@ -348,13 +352,13 @@ class PRSChatbot:
         """
         # Page configuration
         st.set_page_config(
-            page_title="UMT PRS Intelligent Assistant",
+            page_title="UMT PRS Navigator",
             page_icon="🎓",
             layout="wide"
         )
         
         # Title and Introduction
-        st.title("🎓 UMT Participant Relations Section Intelligent Assistant")
+        st.title("🎓 UMT PRS Navigator")
         st.markdown("""
         Welcome! I provide precise information from UMT PRS Handbooks. 
         Use the sidebar to manage document embeddings.
@@ -363,7 +367,7 @@ class PRSChatbot:
         # Sidebar for document embedding management
         st.sidebar.header("Document Embedding Management")
         
-        # # Create Embeddings Button
+        # Create Embeddings Button
         # if st.sidebar.button("Generate Embeddings"):
         #     with st.spinner("Creating vector embeddings..."):
         #         if self.create_vector_embedding():
